@@ -51,7 +51,7 @@ resource "google_compute_region_backend_service" "default" {
   provider                        = google-beta
   project                         = var.project_id
   region                          = var.region
-  name                            = var.name
+  name                            = try(var.backend_service_config.name, var.name)
   description                     = var.description
   load_balancing_scheme           = "INTERNAL"
   protocol                        = var.protocol

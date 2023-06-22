@@ -38,6 +38,7 @@ variable "backend_service_config" {
     log_sample_rate  = optional(number)
     session_affinity = optional(string)
     timeout_sec      = optional(number)
+    name             = optional(string)
   })
   default  = {}
   nullable = false
@@ -105,6 +106,7 @@ variable "health_check" {
 variable "health_check_config" {
   description = "Optional auto-created health check configuration, use the output self-link to set it in the auto healing policy. Refer to examples for usage."
   type = object({
+    name                = optional(string)
     check_interval_sec  = optional(number)
     description         = optional(string, "Terraform managed.")
     enable_logging      = optional(bool, false)

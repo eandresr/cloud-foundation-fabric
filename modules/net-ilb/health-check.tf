@@ -24,13 +24,14 @@ locals {
   hc_https = try(local.hc.https, null) != null
   hc_ssl   = try(local.hc.ssl, null) != null
   hc_tcp   = try(local.hc.tcp, null) != null
+  hc_name  = try(local.hc.name, var.name)
 }
 
 resource "google_compute_health_check" "default" {
   provider            = google-beta
   count               = local.hc != null ? 1 : 0
   project             = var.project_id
-  name                = var.name
+  name                = try(local.hc_name, var.name)
   description         = local.hc.description
   check_interval_sec  = local.hc.check_interval_sec
   healthy_threshold   = local.hc.healthy_threshold
