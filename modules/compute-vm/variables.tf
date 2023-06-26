@@ -35,10 +35,35 @@ variable "attached_disk_defaults" {
   }
 }
 
-variable "boot_disk_snapshot_policy" {
-  description = "Boot Disk snapshot policy, if defined it will be attached to the Boot disk. The value we need is the Snapshot Policy name."
-  type        = string
-  default     = ""
+variable "snapshot_policy" {
+  description = "Boot Disk snapshot policy, if defined it will be created before instance and disks so we can specify then for using with every disk needed. The value we need is the Snapshot Policy name."
+  type        = list(object({
+    name             = string
+    retention_policy = object({
+      max_retention_days    = number
+      on_source_disk_delete = bool
+    })
+    daily_schedule = optional(object({
+      days_in_cycle = number
+      start_time    = string
+    }))
+    hourly_schedule = optional(object({
+      hours_in_cycle = number
+      start_time     = string
+    }))
+    weekly_schedule = optional(object({
+      day_of_weeks = object({
+        day        = string
+        start_time = string
+      })
+    }))
+    snapshot_properties = optional(object({
+      guest_flush       = bool
+      labels            = map(any)
+      storage_locations = list(string)
+    }))
+  }))
+  default     = []
 }
 
 variable "attached_disks" {
@@ -92,9 +117,10 @@ variable "boot_disk" {
     auto_delete = optional(bool, true)
     source      = optional(string)
     initialize_params = optional(object({
-      image = optional(string, "projects/debian-cloud/global/images/family/debian-11")
-      size  = optional(number, 10)
-      type  = optional(string, "pd-balanced")
+      image           = optional(string, "projects/debian-cloud/global/images/family/debian-11")
+      size            = optional(number, 10)
+      type            = optional(string, "pd-balanced")
+      snapshot_policy = optional(string)
     }))
   })
   default = {
