@@ -119,20 +119,20 @@ resource "google_compute_region_disk" "disks" {
 # Disks snapshot handler
 resource "google_compute_resource_policy" "policy" {
   # TODO: pending to add multiple policy creation (if it is needed to have one diferent policy for Data disks, other for Boot disk, etc)
-  count   = var.snapshot_policy != {} ? 1 : 0
-  name    = var.snapshot_policy.name
+  for_each = var.snapshot_policy
+  name    = each.value.name
   project = var.project_id
   region  = local.region
 
   snapshot_schedule_policy {
     retention_policy {
-      max_retention_days    = var.snapshot_policy.retention_policy.max_retention_days
-      on_source_disk_delete = var.snapshot_policy.retention_policy.on_source_disk_delete
+      max_retention_days    = each.value.retention_policy.max_retention_days
+      on_source_disk_delete = each.value.retention_policy.on_source_disk_delete
     }
 
     schedule {
       dynamic "daily_schedule" {
-        for_each = var.snapshot_policy.daily_schedule == null ? [] : [var.snapshot_policy.daily_schedule]
+        for_each = each.value.daily_schedule == null ? [] : [each.value.daily_schedule]
         content {
           days_in_cycle = daily_schedule.value.days_in_cycle
           start_time    = daily_schedule.value.start_time
@@ -140,7 +140,7 @@ resource "google_compute_resource_policy" "policy" {
       }
 
       dynamic "hourly_schedule" {
-        for_each = var.snapshot_policy.hourly_schedule == null ? [] : [var.snapshot_policy.hourly_schedule]
+        for_each = each.value.hourly_schedule == null ? [] : [each.value.hourly_schedule]
         content {
           hours_in_cycle = hourly_schedule.value["hours_in_cycle"]
           start_time     = hourly_schedule.value["start_time"]
@@ -148,7 +148,7 @@ resource "google_compute_resource_policy" "policy" {
       }
 
       dynamic "weekly_schedule" {
-        for_each = var.snapshot_policy.weekly_schedule == null ? [] : [var.snapshot_policy.weekly_schedule]
+        for_each = each.value.weekly_schedule == null ? [] : [each.value.weekly_schedule]
         content {
           dynamic "day_of_weeks" {
             for_each = weekly_schedule.value.day_of_weeks
@@ -162,7 +162,7 @@ resource "google_compute_resource_policy" "policy" {
     }
 
     dynamic "snapshot_properties" {
-      for_each = var.snapshot_policy.snapshot_properties == null ? [] : [var.snapshot_policy.snapshot_properties]
+      for_each = each.value.snapshot_properties == null ? [] : [each.value.snapshot_properties]
       content {
         guest_flush       = snapshot_properties.value["guest_flush"]
         labels            = snapshot_properties.value["labels"]
