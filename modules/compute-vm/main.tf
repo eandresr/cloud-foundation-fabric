@@ -117,19 +117,68 @@ resource "google_compute_region_disk" "disks" {
 }
 
 # Disks snapshot handler
-data "google_compute_instance" "instance" {
+resource "google_compute_resource_policy" "policy" {
+  # TODO: pending to add multiple policy creation (if it is needed to have one diferent policy for Data disks, other for Boot disk, etc)
+  count   = var.snapshot_policy != {} ? 1 : 0
+  name    = var.snapshot_policy.name
   project = var.project_id
-  zone    = var.zone
-  name    = var.name
+  region  = var.region
+
+  snapshot_schedule_policy {
+    retention_policy {
+      max_retention_days    = var.snapshot_policy.retention_policy.max_retention_days
+      on_source_disk_delete = var.snapshot_policy.retention_policy.on_source_disk_delete
+    }
+
+    schedule {
+      dynamic "daily_schedule" {
+        for_each = var.snapshot_policy.daily_schedule == null ? [] : [var.snapshot_policy.daily_schedule]
+        content {
+          days_in_cycle = daily_schedule.value.days_in_cycle
+          start_time    = daily_schedule.value.start_time
+        }
+      }
+
+      dynamic "hourly_schedule" {
+        for_each = var.snapshot_policy.hourly_schedule == null ? [] : [var.snapshot_policy.hourly_schedule]
+        content {
+          hours_in_cycle = hourly_schedule.value["hours_in_cycle"]
+          start_time     = hourly_schedule.value["start_time"]
+        }
+      }
+
+      dynamic "weekly_schedule" {
+        for_each = var.snapshot_policy.weekly_schedule == null ? [] : [var.snapshot_policy.weekly_schedule]
+        content {
+          dynamic "day_of_weeks" {
+            for_each = weekly_schedule.value.day_of_weeks
+            content {
+              day        = day_of_weeks.value["day"]
+              start_time = day_of_weeks.value["start_time"]
+            }
+          }
+        }
+      }
+    }
+
+    dynamic "snapshot_properties" {
+      for_each = var.snapshot_policy.snapshot_properties == null ? [] : [var.snapshot_policy.snapshot_properties]
+      content {
+        guest_flush       = snapshot_properties.value["guest_flush"]
+        labels            = snapshot_properties.value["labels"]
+        storage_locations = snapshot_properties.value["storage_locations"]
+      }
+    }
+  }
 }
 
 resource "google_compute_disk_resource_policy_attachment" "boot_disk_snapshot" {
-  count      = var.boot_disk_snapshot_policy != "" ? 1 : 0
+  count      = try(var.boot_disk.snapshot_policy,0) != 0 ? 1 : 0
   project    = var.project_id
-  name       = var.boot_disk_snapshot_policy
-  disk       = element(split("/", data.google_compute_instance.instance.boot_disk.0.source), length(split("/", data.google_compute_instance.instance.boot_disk.0.source)) -1)
+  name       = var.boot_disk.snapshot_policy
+  disk       = element(split("/", google_compute_instance.default.boot_disk.0.source), length(split("/", google_compute_instance.default.boot_disk.0.source)) -1)
   zone       = var.zone
-  depends_on = [google_compute_instance.default]
+  depends_on = [google_compute_instance.default, google_compute_resource_policy.policy]
 }
 
 resource "google_compute_disk_resource_policy_attachment" "attached_disk_snapshot_zonal" {
@@ -140,7 +189,7 @@ resource "google_compute_disk_resource_policy_attachment" "attached_disk_snapsho
   name       = each.value.snapshot_policy
   disk       = "${var.name}-${each.value.name}"
   zone       = var.zone
-  depends_on = [google_compute_disk.disks]
+  depends_on = [google_compute_disk.disks, , google_compute_resource_policy.policy]
 }
 
 resource "google_compute_region_disk_resource_policy_attachment" "attached_disk_snapshot_regional" {
@@ -151,7 +200,7 @@ resource "google_compute_region_disk_resource_policy_attachment" "attached_disk_
   name       = each.value.snapshot_policy
   disk       = "${var.name}-${each.value.name}"
   region     = local.region
-  depends_on = [google_compute_region_disk.disks]
+  depends_on = [google_compute_region_disk.disks, , google_compute_resource_policy.policy]
 }
 
 resource "google_compute_instance" "default" {
