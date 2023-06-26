@@ -122,7 +122,7 @@ resource "google_compute_resource_policy" "policy" {
   count   = var.snapshot_policy != {} ? 1 : 0
   name    = var.snapshot_policy.name
   project = var.project_id
-  region  = var.region
+  region  = local.region
 
   snapshot_schedule_policy {
     retention_policy {
