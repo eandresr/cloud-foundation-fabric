@@ -173,34 +173,34 @@ resource "google_compute_resource_policy" "policy" {
 }
 
 resource "google_compute_disk_resource_policy_attachment" "boot_disk_snapshot" {
-  count      = try(var.boot_disk.snapshot_policy,0) != 0 ? 1 : 0
+  count      = try(var.boot_disk.snapshot_policy, 0) != 0 ? 1 : 0
   project    = var.project_id
   name       = var.boot_disk.snapshot_policy
-  disk       = element(split("/", google_compute_instance.default.boot_disk.0.source), length(split("/", google_compute_instance.default.boot_disk.0.source)) -1)
+  disk       = element(split("/", google_compute_instance.default.boot_disk.0.source), length(split("/", google_compute_instance.default.boot_disk.0.source)) - 1)
   zone       = var.zone
   depends_on = [google_compute_instance.default, google_compute_resource_policy.policy]
 }
 
 resource "google_compute_disk_resource_policy_attachment" "attached_disk_snapshot_zonal" {
   for_each = {
-    for k, v in local.attached_disks_zonal: k => v if try(v.snapshot_policy, null) != null  
+    for k, v in local.attached_disks_zonal : k => v if try(v.snapshot_policy, null) != null
   }
   project    = var.project_id
   name       = each.value.snapshot_policy
   disk       = "${var.name}-${each.value.name}"
   zone       = var.zone
-  depends_on = [google_compute_disk.disks, , google_compute_resource_policy.policy]
+  depends_on = [google_compute_disk.disks, google_compute_resource_policy.policy]
 }
 
 resource "google_compute_region_disk_resource_policy_attachment" "attached_disk_snapshot_regional" {
   for_each = {
-    for k, v in local.attached_disks_regional: k => v if try(v.snapshot_policy, null) != null  
+    for k, v in local.attached_disks_regional : k => v if try(v.snapshot_policy, null) != null
   }
   project    = var.project_id
   name       = each.value.snapshot_policy
   disk       = "${var.name}-${each.value.name}"
   region     = local.region
-  depends_on = [google_compute_region_disk.disks, , google_compute_resource_policy.policy]
+  depends_on = [google_compute_region_disk.disks, google_compute_resource_policy.policy]
 }
 
 resource "google_compute_instance" "default" {
